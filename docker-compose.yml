@@ -1,0 +1,68 @@
+services:
+  app:
+    build:
+      context: ./backend
+    container_name: laravel-app
+    volumes:
+      - ./backend:/var/www/html
+      - ./backend/database:/var/www/html/database
+    working_dir: /var/www/html
+    env_file:
+      - ./backend/.env
+    networks:
+      - laravel_network
+    command: php-fpm
+    ports:
+      - "9000:9000"
+
+  webserver:
+    image: nginx:alpine
+    container_name: nginx-webserver
+    volumes:
+      - ./backend:/var/www/html
+      - ./nginx/conf.d:/etc/nginx/conf.d
+    ports:
+      - "80:80"
+    networks:
+      - laravel_network
+    depends_on:
+      - app
+
+  mysql:
+    image: mysql:8.0
+    container_name: mysql-db
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: laravel_db
+      MYSQL_USER: laravel_user
+      MYSQL_PASSWORD: laravel_password
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - laravel_network
+    ports:
+      - "3306:3306"
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    container_name: phpmyadmin
+    restart: unless-stopped
+    environment:
+      PMA_HOST: mysql-db
+      MYSQL_ROOT_PASSWORD: root_password
+    ports:
+      - "8080:80"
+    networks:
+      - laravel_network
+    depends_on:
+      - mysql
+
+networks:
+  laravel_network:
+    driver: bridge
+
+volumes:
+  mysql_data:
